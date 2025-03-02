@@ -4,6 +4,26 @@
 #define MenuAction2  2
 #define MenuAction3  3
 #define onExitProgramm 4
+#define onClearField 5
+#define onReadfield 6
+
+#define onSafeFile 7
+#define onLoadFile 8
+
+#define DlgIndexNumber 200
+
+#define TextBufferSize	256
+
+char Buffer[TextBufferSize];
+unsigned num;
+int readChar;
+
+HWND hEdidControl; 
+HWND hStaticControl;
+HWND NumbeControl;
+
+char filename[260];
+OPENFILENAMEA ofn;
 
 LRESULT CALLBACK SoftwareMainProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
 WNDCLASS NewWindowClass(HBRUSH BGcolor, HCURSOR Cursor, HINSTANCE hInst, HICON Icon, LPCWSTR Name, WNDPROC Procedure);
@@ -11,3 +31,6 @@ WNDCLASS NewWindowClass(HBRUSH BGcolor, HCURSOR Cursor, HINSTANCE hInst, HICON I
 
 void MainWndAddMenus(HWND hWnd); 
 void MainWndAddWidgets(HWND hWnd);
+void SetOpenFileParams(HWND hWnd);
+void SaveDate(LPCSTR path);
+void LoadDate(LPCSTR path);
