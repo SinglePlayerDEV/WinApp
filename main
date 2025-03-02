@@ -1,0 +1,93 @@
+#include <windows.h>
+#include "SoftWareDefInitions.h"
+
+LRESULT CALLBACK SoftwareMainProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
+WNDCLASS NewWindowClass(HBRUSH BGcolor, HCURSOR Cursor, HINSTANCE hInst, HICON Icon, LPCWSTR Name, WNDPROC Procedure);
+
+
+int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR	args, int ncmdshow) {
+
+	WNDCLASS  SoftwareMainClass = NewWindowClass((HBRUSH)COLOR_WINDOW, LoadCursor(NULL, IDC_ARROW), hInst, LoadIcon(NULL, IDI_QUESTION), L"MainWndCLASS", SoftwareMainProcedure);
+
+	if (!RegisterClass(&SoftwareMainClass)) { return -1; }
+	MSG SoftwareMainMessage = { 0 };
+
+	
+	CreateWindow(L"MainWndCLASS", L"Fist c++ Window", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 100, 100, 500, 250, NULL, NULL, NULL, NULL);
+	while (GetMessage(&SoftwareMainMessage, NULL, NULL, NULL))
+	{
+		TranslateMessage(&SoftwareMainMessage);
+		DispatchMessage(&SoftwareMainMessage);
+	}
+	return 0;
+}
+
+WNDCLASS NewWindowClass(HBRUSH BGcolor, HCURSOR Cursor, HINSTANCE hInst, HICON Icon, LPCWSTR Name, WNDPROC Procedure) {
+
+	WNDCLASS NWC = { 0 };
+	NWC.hCursor = Cursor;
+	NWC.hInstance = hInst;
+	NWC.hIcon = Icon;
+	NWC.lpszClassName = Name;
+	NWC.hbrBackground = BGcolor;
+	NWC.lpfnWndProc = Procedure;
+
+	return NWC;
+}
+
+LRESULT CALLBACK SoftwareMainProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
+
+	switch (msg)
+	{
+	case WM_COMMAND:
+		switch (wp)
+		{
+		case MenuAction1:
+			MessageBoxA(hWnd, "was cliced menu 1 ", "Menu worked 1 ", MB_OK);
+			break;
+		case MenuAction2:
+			MessageBoxA(hWnd, "was cliced menu 2 ", "Menu worked 2 ", MB_OK);
+			break;
+		case MenuAction3:
+			MessageBoxA(hWnd, "was cliced menu 3 ", "Menu worked 3", MB_OK);
+			break;
+		case onExitProgramm:
+			PostQuitMessage(0); 
+			break;
+		default: break;
+		}
+		break;
+
+	case WM_CREATE:
+		MainWndAddMenus(hWnd);
+
+
+		break;
+	case WM_DESTROY:
+		PostQuitMessage(0);
+		break;
+	default: return DefWindowProc(hWnd, msg, wp, lp);
+		
+	}
+
+}
+void MainWndAddMenus(HWND hWnd) {
+
+	HMENU  RootMenu = CreateMenu();
+	HMENU  SubMenu = CreateMenu();
+	HMENU SubActionMenu = CreateMenu();
+
+	AppendMenu(SubActionMenu, MF_STRING, MenuAction1, L"OUR MENU 1 ");
+	AppendMenu(SubActionMenu, MF_STRING, MenuAction2, L"OUR MENU 2 ");
+	AppendMenu(SubActionMenu, MF_STRING, MenuAction3, L"OUR MENU 3 ");
+    AppendMenu(SubMenu, MF_POPUP, (UINT_PTR)SubActionMenu, L"Action");
+	
+	AppendMenu(SubMenu, MF_SEPARATOR, NULL, NULL);
+	AppendMenu(SubMenu, MF_STRING, onExitProgramm, L"exit");
+
+
+	AppendMenu(RootMenu, MF_POPUP, (UINT_PTR)SubMenu, L"file");
+
+	
+	SetMenu(hWnd, RootMenu);
+}
