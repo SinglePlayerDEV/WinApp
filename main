@@ -1,5 +1,8 @@
 #include <windows.h>
 #include "SoftWareDefInitions.h"
+#include<string>
+
+using namespace std;
 
 LRESULT CALLBACK SoftwareMainProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
 WNDCLASS NewWindowClass(HBRUSH BGcolor, HCURSOR Cursor, HINSTANCE hInst, HICON Icon, LPCWSTR Name, WNDPROC Procedure);
@@ -13,7 +16,7 @@ int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR	args, int ncmdsho
 	MSG SoftwareMainMessage = { 0 };
 
 	
-	CreateWindow(L"MainWndCLASS", L"Fist c++ Window", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 100, 100, 500, 250, NULL, NULL, NULL, NULL);
+	CreateWindow(L"MainWndCLASS", L"Fist c++ Window", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 100, 100, 500, 270, NULL, NULL, NULL, NULL);
 	while (GetMessage(&SoftwareMainMessage, NULL, NULL, NULL))
 	{
 		TranslateMessage(&SoftwareMainMessage);
@@ -42,14 +45,22 @@ LRESULT CALLBACK SoftwareMainProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp
 	case WM_COMMAND:
 		switch (wp)
 		{
-		case MenuAction1:
-			MessageBoxA(hWnd, "was cliced menu 1 ", "Menu worked 1 ", MB_OK);
+		
+		case onClearField:
+			SetWindowTextA(hEdidControl, "");
 			break;
-		case MenuAction2:
-			MessageBoxA(hWnd, "was cliced menu 2 ", "Menu worked 2 ", MB_OK);
+		case onReadfield:
+			num = GetDlgItemInt(hWnd, DlgIndexNumber, FALSE, FALSE);		 
+			SetWindowTextA(hStaticControl, to_string(num).c_str());
+			// readChar =  GetWindowTextA(hEdidControl, Buffer, TextBufferSize);
+			// SetWindowTextA(hStaticControl, Buffer);
+			// SetWindowTextA(hStaticControl, ("symbols read: " + to_string(readChar)).c_str());
 			break;
-		case MenuAction3:
-			MessageBoxA(hWnd, "was cliced menu 3 ", "Menu worked 3", MB_OK);
+		case onSafeFile:
+			if (GetSaveFileNameA(&ofn))	{	SaveDate(filename);}
+			break;
+		case onLoadFile:
+			if (GetOpenFileNameA(&ofn))	{	LoadDate(filename);}
 			break;
 		case onExitProgramm:
 			PostQuitMessage(0); 
@@ -60,8 +71,8 @@ LRESULT CALLBACK SoftwareMainProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp
 
 	case WM_CREATE:
 		MainWndAddMenus(hWnd);
-
-
+		MainWndAddWidgets(hWnd);
+		SetOpenFileParams(hWnd);
 		break;
 	case WM_DESTROY:
 		PostQuitMessage(0);
@@ -75,19 +86,86 @@ void MainWndAddMenus(HWND hWnd) {
 
 	HMENU  RootMenu = CreateMenu();
 	HMENU  SubMenu = CreateMenu();
-	HMENU SubActionMenu = CreateMenu();
-
-	AppendMenu(SubActionMenu, MF_STRING, MenuAction1, L"OUR MENU 1 ");
-	AppendMenu(SubActionMenu, MF_STRING, MenuAction2, L"OUR MENU 2 ");
-	AppendMenu(SubActionMenu, MF_STRING, MenuAction3, L"OUR MENU 3 ");
-    AppendMenu(SubMenu, MF_POPUP, (UINT_PTR)SubActionMenu, L"Action");
 	
+	AppendMenu(SubMenu, MF_STRING, onSafeFile, L"safe");
+	AppendMenu(SubMenu, MF_STRING, onLoadFile, L"load");
+
+	AppendMenu(SubMenu, MF_SEPARATOR, NULL, NULL);
+	AppendMenu(SubMenu, MF_STRING, onClearField, L"clear");
+
 	AppendMenu(SubMenu, MF_SEPARATOR, NULL, NULL);
 	AppendMenu(SubMenu, MF_STRING, onExitProgramm, L"exit");
-
-
+	
+	
 	AppendMenu(RootMenu, MF_POPUP, (UINT_PTR)SubMenu, L"file");
-
+	AppendMenu(RootMenu, MF_STRING, (UINT_PTR)SubMenu, L"help");
 	
 	SetMenu(hWnd, RootMenu);
+}
+void MainWndAddWidgets(HWND hWnd) 
+{ 
+	hStaticControl =  CreateWindowA("Static", "STATUS: ", WS_VISIBLE | WS_CHILD | ES_CENTER, 200, 5, 100, 30, hWnd, NULL, NULL, NULL);
+	hEdidControl = CreateWindowA("edit", "this is edit control", WS_VISIBLE | WS_CHILD | ES_MULTILINE | WS_VSCROLL  , 5, 40, 470, 120, hWnd, NULL, NULL, NULL);
+	NumbeControl = CreateWindowA("edit", "0", WS_VISIBLE | WS_CHILD | ES_CENTER | ES_NUMBER, 5, 170, 120, 30, hWnd, (HMENU)DlgIndexNumber, NULL, NULL);
+
+	CreateWindowA("button", "clear", WS_VISIBLE | WS_CHILD | ES_CENTER, 5, 5, 120, 30, hWnd, (HMENU)onClearField, NULL, NULL);
+	CreateWindowA("button", "Read", WS_VISIBLE | WS_CHILD | ES_CENTER, 130, 5, 50, 30, hWnd, (HMENU)onReadfield, NULL, NULL);
+}
+
+void SaveDate(LPCSTR path) 
+{
+	HANDLE FiletoSave = CreateFileA(
+		path,
+		GENERIC_WRITE,
+		0,
+		NULL,
+		CREATE_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);
+
+	int saveLenth = GetWindowTextLength(hEdidControl) + 1;
+	char* data = new char[saveLenth];
+
+	saveLenth = GetWindowTextA(hEdidControl, data, saveLenth);
+
+	DWORD bytesIterated;
+	WriteFile(FiletoSave, data, saveLenth, &bytesIterated, NULL);	
+
+	CloseHandle(FiletoSave);
+	delete[] data;
+}
+
+void LoadDate(LPCSTR path) 
+{
+
+	HANDLE FiletoLoad = CreateFileA(
+		path,
+		GENERIC_READ,
+		0,
+		NULL,
+		OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);
+
+	DWORD byteIterated;
+
+	ReadFile(FiletoLoad, Buffer, TextBufferSize, &byteIterated, NULL);
+
+	SetWindowTextA(hEdidControl, Buffer);
+
+	CloseHandle(FiletoLoad);
+}
+
+void SetOpenFileParams(HWND hWnd) 
+{
+	ZeroMemory(&ofn, sizeof(ofn));
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = hWnd;
+	ofn.lpstrFile = filename; 
+	ofn.nMaxFile = sizeof(filename);
+	ofn.lpstrFilter = ".txt";
+	ofn.lpstrFileTitle = NULL;
+	ofn.nMaxFileTitle = 0;
+	ofn.lpstrInitialDir = "D:\\test\\output.txt";
+	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
 }
