@@ -1,0 +1,13 @@
+#pragma once
+
+#define MenuAction1  1
+#define MenuAction2  2
+#define MenuAction3  3
+#define onExitProgramm 4
+
+LRESULT CALLBACK SoftwareMainProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
+WNDCLASS NewWindowClass(HBRUSH BGcolor, HCURSOR Cursor, HINSTANCE hInst, HICON Icon, LPCWSTR Name, WNDPROC Procedure);
+
+
+void MainWndAddMenus(HWND hWnd); 
+void MainWndAddWidgets(HWND hWnd);
