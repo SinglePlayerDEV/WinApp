@@ -1,170 +1,284 @@
 #include <windows.h>
+#include <string>
+#include <cstdlib>
 #include "SoftWareDefInitions.h"
-#include<string>
+#include "resource.h"
+#include "ItemsGlobal.h"
 
 using namespace std;
 
-LRESULT CALLBACK SoftwareMainProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp);
-WNDCLASS NewWindowClass(HBRUSH BGcolor, HCURSOR Cursor, HINSTANCE hInst, HICON Icon, LPCWSTR Name, WNDPROC Procedure);
+class BaseWindow {
+protected:
+    HINSTANCE hInstance;  // Экземпляр приложения
+    HWND hWnd;            // Дескриптор окна
 
+public:
+    BaseWindow(HINSTANCE hInst) : hInstance(hInst), hWnd(nullptr) {}
 
-int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR	args, int ncmdshow) {
+    // Виртуальные методы для полиморфизма
+    virtual HWND CreateWindowInstance(int x, int y, int width, int height, DWORD style, LPCWSTR title) = 0;
 
-	WNDCLASS  SoftwareMainClass = NewWindowClass((HBRUSH)COLOR_WINDOW, LoadCursor(NULL, IDC_ARROW), hInst, LoadIcon(NULL, IDI_QUESTION), L"MainWndCLASS", SoftwareMainProcedure);
+    HWND GetWindowHandle() const { return hWnd; }
 
-	if (!RegisterClass(&SoftwareMainClass)) { return -1; }
-	MSG SoftwareMainMessage = { 0 };
+    virtual ~BaseWindow() {}
+};
 
-	
-	CreateWindow(L"MainWndCLASS", L"Fist c++ Window", WS_OVERLAPPEDWINDOW | WS_VISIBLE, 100, 100, 500, 270, NULL, NULL, NULL, NULL);
-	while (GetMessage(&SoftwareMainMessage, NULL, NULL, NULL))
-	{
-		TranslateMessage(&SoftwareMainMessage);
-		DispatchMessage(&SoftwareMainMessage);
-	}
-	return 0;
-}
+class Window : public BaseWindow {
 
-WNDCLASS NewWindowClass(HBRUSH BGcolor, HCURSOR Cursor, HINSTANCE hInst, HICON Icon, LPCWSTR Name, WNDPROC Procedure) {
+    LPCWSTR className;
+    WNDPROC procedure;
 
-	WNDCLASS NWC = { 0 };
-	NWC.hCursor = Cursor;
-	NWC.hInstance = hInst;
-	NWC.hIcon = Icon;
-	NWC.lpszClassName = Name;
-	NWC.hbrBackground = BGcolor;
-	NWC.lpfnWndProc = Procedure;
+public:
+    Window(HINSTANCE hInst, LPCWSTR className, WNDPROC proc)
+        : BaseWindow(hInst), className(className), procedure(proc) {
+    }
 
-	return NWC;
-}
+    WNDCLASS CreateClass(HBRUSH BGcolor, HCURSOR Cursor, HICON Icon) {
+        WNDCLASS NWC = { 0 };
+        NWC.hCursor = Cursor;
+        NWC.hInstance = hInstance;
+        NWC.hIcon = Icon;
+        NWC.lpszClassName = className;
+        NWC.hbrBackground = BGcolor;
+        NWC.lpfnWndProc = procedure;
+        return NWC;
+    }
 
+    bool RegisterClass(const WNDCLASS& wc) {
+        return ::RegisterClass(&wc);
+    }
+
+    HWND CreateWindowInstance(int x, int y, int width, int height, DWORD style, LPCWSTR title) override {
+        hWnd = ::CreateWindow(className, title, style, x, y, width, height, NULL, NULL, hInstance, NULL);
+        return hWnd;
+    }
+};
+
+// Класс для управления меню
+class Menu {
+public:
+    void AddMenus(HWND hWnd) {
+        HMENU RootMenu = CreateMenu();
+        HMENU SubMenu = CreateMenu();
+
+        AppendMenu(SubMenu, MF_STRING, onChangeTheme, L"Change Theme");
+        AppendMenu(SubMenu, MF_SEPARATOR, NULL, NULL);
+        AppendMenu(SubMenu, MF_STRING, onSafeFile, L"safe");
+        AppendMenu(SubMenu, MF_STRING, onLoadFile, L"load");
+        AppendMenu(SubMenu, MF_SEPARATOR, NULL, NULL);
+        AppendMenu(SubMenu, MF_STRING, onClearField, L"clear");
+        AppendMenu(SubMenu, MF_SEPARATOR, NULL, NULL);
+        AppendMenu(SubMenu, MF_STRING, onExitProgramm, L"exit");
+
+        AppendMenu(RootMenu, MF_POPUP, (UINT_PTR)SubMenu, L"file");
+        AppendMenu(RootMenu, MF_STRING, (UINT_PTR)SubMenu, L"help");
+
+    
+        SetMenu(hWnd, RootMenu);
+    }
+};
+
+// Класс для работы с виджетами
+class Widgets {
+public:
+    void AddWidgets(HWND hWnd) {
+      //  hStaticControl = CreateWindowA("Static", "STATUS: ", WS_VISIBLE | WS_CHILD | ES_CENTER, 200, 5, 100, 30, hWnd, NULL, NULL, NULL);
+        hEdidControl = CreateWindowA("edit", "this is edit control", WS_VISIBLE | WS_CHILD | ES_MULTILINE | WS_VSCROLL, 5, 40, 470, 120, hWnd, NULL, NULL, NULL);
+       // NumbeControl = CreateWindowA("edit", "0", WS_VISIBLE | WS_CHILD | ES_CENTER | ES_NUMBER, 5, 170, 120, 30, hWnd, (HMENU)DlgIndexNumber, NULL, NULL);
+
+       // CreateWindowA("button", "clear", WS_VISIBLE | WS_CHILD | ES_CENTER, 5, 5, 120, 30, hWnd, (HMENU)onClearField, NULL, NULL); // изменитть данную кнопку на стиль шрифта 
+     //   CreateWindowA("button", "Read", WS_VISIBLE | WS_CHILD | ES_CENTER, 130, 5, 50, 30, hWnd, (HMENU)onReadfield, NULL, NULL);
+    }
+};
+
+// Класс для работы с файлами
+class FileManager {
+public:
+    void SaveDate(LPCSTR path) {
+        HANDLE FiletoSave = CreateFileA(path, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+        int saveLenth = GetWindowTextLength(hEdidControl) + 1;
+        char* data = new char[saveLenth];
+        saveLenth = GetWindowTextA(hEdidControl, data, saveLenth);
+
+        DWORD bytesIterated;
+        WriteFile(FiletoSave, data, saveLenth, &bytesIterated, NULL);
+
+        CloseHandle(FiletoSave);
+        delete[] data;
+    }
+
+    void LoadDate(LPCSTR path) {
+        HANDLE FiletoLoad = CreateFileA(path, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        DWORD byteIterated;
+
+        ReadFile(FiletoLoad, Buffer, TextBufferSize, &byteIterated, NULL);
+        SetWindowTextA(hEdidControl, Buffer);
+
+        CloseHandle(FiletoLoad);
+    }
+
+    void SetOpenFileParams(HWND hWnd) {
+        ZeroMemory(&ofn, sizeof(ofn));
+        ofn.lStructSize = sizeof(ofn);
+        ofn.hwndOwner = hWnd;
+        ofn.lpstrFile = filename;
+        ofn.nMaxFile = sizeof(filename);
+        ofn.lpstrFilter = ".txt";
+        ofn.lpstrFileTitle = NULL;
+        ofn.nMaxFileTitle = 0;
+        ofn.lpstrInitialDir = "D:\\test\\output.txt";
+        ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+    }
+};
+
+// Основные процедуры окна
 LRESULT CALLBACK SoftwareMainProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp) {
+    FileManager fileManager;
+    switch (msg) {
+    case WM_COMMAND:
+        switch (wp) {
+        case onChangeTheme: {
+            isDarkTheme = !isDarkTheme;
+            DeleteObject(hBrushBackground);
+            hBrushBackground = CreateSolidBrush(isDarkTheme ? RGB(26, 33, 39) : RGB(255, 255, 255));
+            InvalidateRect(hWnd, NULL, TRUE);
+            UpdateWindow(hWnd);
+            break;
+        }
+        case onClearField:
+            SetWindowTextA(hEdidControl, "");
+            break;
+        case onReadfield:
+            num = GetDlgItemInt(hWnd, DlgIndexNumber, FALSE, FALSE);
+            SetWindowTextA(hStaticControl, to_string(num).c_str());
+            break;
+        case onSafeFile:
+            if (GetSaveFileNameA(&ofn)) {
+                fileManager.SaveDate(filename);
+            }
+            break;
+        case onLoadFile:
+            if (GetOpenFileNameA(&ofn)) {
+                fileManager.LoadDate(filename);
+            }
+            break;
+        case onExitProgramm:
+            PostQuitMessage(0);
+            break;
+        default: break;
+        }
+        break;
 
-	switch (msg)
-	{
-	case WM_COMMAND:
-		switch (wp)
-		{
-		
-		case onClearField:
-			SetWindowTextA(hEdidControl, "");
-			break;
-		case onReadfield:
-			num = GetDlgItemInt(hWnd, DlgIndexNumber, FALSE, FALSE);		 
-			SetWindowTextA(hStaticControl, to_string(num).c_str());
-			// readChar =  GetWindowTextA(hEdidControl, Buffer, TextBufferSize);
-			// SetWindowTextA(hStaticControl, Buffer);
-			// SetWindowTextA(hStaticControl, ("symbols read: " + to_string(readChar)).c_str());
-			break;
-		case onSafeFile:
-			if (GetSaveFileNameA(&ofn))	{	SaveDate(filename);}
-			break;
-		case onLoadFile:
-			if (GetOpenFileNameA(&ofn))	{	LoadDate(filename);}
-			break;
-		case onExitProgramm:
-			PostQuitMessage(0); 
-			break;
-		default: break;
-		}
-		break;
+    case WM_SIZE:
+    {
+        int width = LOWORD(lp);
+        int height = HIWORD(lp);
 
-	case WM_CREATE:
-		MainWndAddMenus(hWnd);
-		MainWndAddWidgets(hWnd);
-		SetOpenFileParams(hWnd);
-		break;
-	case WM_DESTROY:
-		PostQuitMessage(0);
-		break;
-	default: return DefWindowProc(hWnd, msg, wp, lp);
-		
-	}
+        MoveWindow(hStaticControl, width / 2 - 50, 5, 100, 30, TRUE);
+        MoveWindow(hEdidControl, 5, 40, width - 10, height - 150, TRUE);
+        MoveWindow(NumbeControl, 5, height - 70, 120, 30, TRUE);
+        MoveWindow(GetDlgItem(hWnd, onClearField), 5, 5, 120, 30, TRUE);
+        MoveWindow(GetDlgItem(hWnd, onReadfield), 130, 5, 50, 30, TRUE);
+        break;
+    }
 
+    case WM_CTLCOLORSTATIC:
+    {
+        HDC hdcStatic = (HDC)wp;
+
+        SetTextColor(hdcStatic, isDarkTheme ? RGB(255, 255, 255) : RGB(26, 33, 39));
+        SetBkMode(hdcStatic, TRANSPARENT);
+        return (LRESULT)hBrushBackground;
+    }
+    case WM_CTLCOLORBTN:
+    {
+        HDC hdcButton = (HDC)wp;
+
+        SetTextColor(hdcButton, isDarkTheme ? RGB(255, 255, 255) : RGB(26, 33, 39));
+        SetBkMode(hdcButton, TRANSPARENT);
+        return (LRESULT)CreateSolidBrush(isDarkTheme ? RGB(26, 33, 39) : RGB(255,255,255));
+    }
+    case WM_ERASEBKGND:
+    {
+        HDC hdc = (HDC)wp;
+        RECT rc;
+        GetClientRect(hWnd, &rc);
+
+        FillRect(hdc, &rc, hBrushBackground);
+        return 1;
+    }
+
+    case WM_CTLCOLOREDIT: 
+    {
+        HDC hdcEdit = (HDC)wp;
+
+        SetTextColor(hdcEdit, isDarkTheme ? RGB(255, 255, 255) : RGB(39, 39, 39));
+
+        SetBkColor(hdcEdit, isDarkTheme ? RGB(39, 39, 39) : RGB(255, 255, 255));
+
+        return (LRESULT)CreateSolidBrush(isDarkTheme ? RGB(39, 39, 39) : RGB(255, 255, 255));
+    }
+    case WM_DRAWITEM:
+    {
+        LPDRAWITEMSTRUCT pDIS = (LPDRAWITEMSTRUCT)lp;
+
+        SetBkColor(pDIS->hDC, RGB(0, 13, 22));
+        SetTextColor(pDIS->hDC, RGB(255, 255, 255));
+
+        DrawText(pDIS->hDC, L"Menu Item", -1, &pDIS->rcItem, DT_CENTER | DT_VCENTER| DT_SINGLELINE);
+        break;
+
+    }
+
+    case WM_CREATE: {
+        Menu menu;
+        menu.AddMenus(hWnd);
+
+        Widgets widgets;
+        widgets.AddWidgets(hWnd);
+
+        fileManager.SetOpenFileParams(hWnd);
+        break;
+    }
+                  
+    case WM_DESTROY:
+        DeleteObject(hBrushBackground);
+        PostQuitMessage(0);
+        break;
+    default:
+        return DefWindowProc(hWnd, msg, wp, lp);
+    }
+    return 0;
+};
+
+int WINAPI WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPSTR args, int ncmdshow) {
+    // Используем базовый класс для управления главным окном
+    BaseWindow* mainWindow = new Window(hInst, L"MainWndCLASS", SoftwareMainProcedure);
+
+    // Создаем класс окна
+    WNDCLASS softwareMainClass = static_cast<Window*>(mainWindow)->CreateClass(
+        (HBRUSH)COLOR_WINDOW, LoadCursor(NULL, IDC_ARROW), LoadIcon(hInst, MAKEINTRESOURCE(IDI_ICON1))
+    );
+
+    if (!static_cast<Window*>(mainWindow)->RegisterClass(softwareMainClass)) {
+        return -1;
+    }
+
+    // Создаем экземпляр окна через полиморфизм
+    mainWindow->CreateWindowInstance(100, 100, 500, 270, WS_OVERLAPPEDWINDOW | WS_VISIBLE, L"First C++ Window");
+
+    // Цикл обработки сообщений
+    MSG SoftwareMainMessage = { 0 };
+    while (GetMessage(&SoftwareMainMessage, NULL, NULL, NULL)) {
+        TranslateMessage(&SoftwareMainMessage);
+        DispatchMessage(&SoftwareMainMessage);
+    }
+
+    delete mainWindow; // Освобождаем ресурсы
+    return 0;
 }
-void MainWndAddMenus(HWND hWnd) {
 
-	HMENU  RootMenu = CreateMenu();
-	HMENU  SubMenu = CreateMenu();
-	
-	AppendMenu(SubMenu, MF_STRING, onSafeFile, L"safe");
-	AppendMenu(SubMenu, MF_STRING, onLoadFile, L"load");
-
-	AppendMenu(SubMenu, MF_SEPARATOR, NULL, NULL);
-	AppendMenu(SubMenu, MF_STRING, onClearField, L"clear");
-
-	AppendMenu(SubMenu, MF_SEPARATOR, NULL, NULL);
-	AppendMenu(SubMenu, MF_STRING, onExitProgramm, L"exit");
-	
-	
-	AppendMenu(RootMenu, MF_POPUP, (UINT_PTR)SubMenu, L"file");
-	AppendMenu(RootMenu, MF_STRING, (UINT_PTR)SubMenu, L"help");
-	
-	SetMenu(hWnd, RootMenu);
-}
-void MainWndAddWidgets(HWND hWnd) 
-{ 
-	hStaticControl =  CreateWindowA("Static", "STATUS: ", WS_VISIBLE | WS_CHILD | ES_CENTER, 200, 5, 100, 30, hWnd, NULL, NULL, NULL);
-	hEdidControl = CreateWindowA("edit", "this is edit control", WS_VISIBLE | WS_CHILD | ES_MULTILINE | WS_VSCROLL  , 5, 40, 470, 120, hWnd, NULL, NULL, NULL);
-	NumbeControl = CreateWindowA("edit", "0", WS_VISIBLE | WS_CHILD | ES_CENTER | ES_NUMBER, 5, 170, 120, 30, hWnd, (HMENU)DlgIndexNumber, NULL, NULL);
-
-	CreateWindowA("button", "clear", WS_VISIBLE | WS_CHILD | ES_CENTER, 5, 5, 120, 30, hWnd, (HMENU)onClearField, NULL, NULL);
-	CreateWindowA("button", "Read", WS_VISIBLE | WS_CHILD | ES_CENTER, 130, 5, 50, 30, hWnd, (HMENU)onReadfield, NULL, NULL);
-}
-
-void SaveDate(LPCSTR path) 
-{
-	HANDLE FiletoSave = CreateFileA(
-		path,
-		GENERIC_WRITE,
-		0,
-		NULL,
-		CREATE_ALWAYS,
-		FILE_ATTRIBUTE_NORMAL,
-		NULL);
-
-	int saveLenth = GetWindowTextLength(hEdidControl) + 1;
-	char* data = new char[saveLenth];
-
-	saveLenth = GetWindowTextA(hEdidControl, data, saveLenth);
-
-	DWORD bytesIterated;
-	WriteFile(FiletoSave, data, saveLenth, &bytesIterated, NULL);	
-
-	CloseHandle(FiletoSave);
-	delete[] data;
-}
-
-void LoadDate(LPCSTR path) 
-{
-
-	HANDLE FiletoLoad = CreateFileA(
-		path,
-		GENERIC_READ,
-		0,
-		NULL,
-		OPEN_EXISTING,
-		FILE_ATTRIBUTE_NORMAL,
-		NULL);
-
-	DWORD byteIterated;
-
-	ReadFile(FiletoLoad, Buffer, TextBufferSize, &byteIterated, NULL);
-
-	SetWindowTextA(hEdidControl, Buffer);
-
-	CloseHandle(FiletoLoad);
-}
-
-void SetOpenFileParams(HWND hWnd) 
-{
-	ZeroMemory(&ofn, sizeof(ofn));
-	ofn.lStructSize = sizeof(ofn);
-	ofn.hwndOwner = hWnd;
-	ofn.lpstrFile = filename; 
-	ofn.nMaxFile = sizeof(filename);
-	ofn.lpstrFilter = ".txt";
-	ofn.lpstrFileTitle = NULL;
 	ofn.nMaxFileTitle = 0;
 	ofn.lpstrInitialDir = "D:\\test\\output.txt";
 	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
