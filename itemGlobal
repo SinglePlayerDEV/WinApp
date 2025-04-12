@@ -1,0 +1,4 @@
+#pragma once
+
+bool isDarkTheme = false;
+static HBRUSH hBrushBackground = CreateSolidBrush(RGB(255, 255, 255));
