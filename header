@@ -14,11 +14,13 @@
 
 #define TextBufferSize	256
 
+#define onChangeTheme 1001
+
 char Buffer[TextBufferSize];
 unsigned num;
 int readChar;
 
-HWND hEdidControl; 
+HWND hEdidControl;
 HWND hStaticControl;
 HWND NumbeControl;
 
@@ -29,7 +31,7 @@ LRESULT CALLBACK SoftwareMainProcedure(HWND hWnd, UINT msg, WPARAM wp, LPARAM lp
 WNDCLASS NewWindowClass(HBRUSH BGcolor, HCURSOR Cursor, HINSTANCE hInst, HICON Icon, LPCWSTR Name, WNDPROC Procedure);
 
 
-void MainWndAddMenus(HWND hWnd); 
+void MainWndAddMenus(HWND hWnd);
 void MainWndAddWidgets(HWND hWnd);
 void SetOpenFileParams(HWND hWnd);
 void SaveDate(LPCSTR path);
