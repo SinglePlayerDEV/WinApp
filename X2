@@ -1,0 +1,233 @@
+#include "MyForm.h"
+
+using namespace System;
+using namespace System::Windows::Forms;
+using namespace System::IO;
+using namespace System::Collections::Generic;
+
+ref class FileManager {
+public:
+    static void DeleteItem(String^ path) {
+        try {
+            if (Directory::Exists(path)) {
+                Directory::Delete(path, true);
+            }
+            else if (File::Exists(path)) {
+                File::Delete(path);
+            }
+            else {
+                throw gcnew IOException("Путь не найден: " + path);
+            }
+        }
+        catch (Exception^ ex) {
+            MessageBox::Show("Ошибка при удалении: " + ex->Message, "Ошибка", MessageBoxButtons::OK, MessageBoxIcon::Error);
+        }
+    }
+
+    static void CopyItem(String^ source, String^ destination) {
+        try {
+            if (Directory::Exists(source)) {
+                Directory::CreateDirectory(destination);
+                for each (String ^ file in Directory::GetFiles(source)) {
+                    File::Copy(file, Path::Combine(destination, Path::GetFileName(file)), true);
+                }
+                for each (String ^ folder in Directory::GetDirectories(source)) {
+                    CopyItem(folder, Path::Combine(destination, Path::GetFileName(folder)));
+                }
+            }
+            else if (File::Exists(source)) {
+                File::Copy(source, destination, true);
+            }
+            else {
+                throw gcnew IOException("Исходный путь не найден: " + source);
+            }
+        }
+        catch (Exception^ ex) {
+            MessageBox::Show("Ошибка при копировании: " + ex->Message, "Ошибка", MessageBoxButtons::OK, MessageBoxIcon::Error);
+        }
+    }
+
+    static array<String^>^ GetDirectoryItems(String^ directory) {
+        List<String^>^ items = gcnew List<String^>();
+        try {
+            if (Directory::Exists(directory)) {
+                for each (String ^ folder in Directory::GetDirectories(directory)) {
+                    items->Add("[Папка] " + folder);
+                }
+                for each (String ^ file in Directory::GetFiles(directory)) {
+                    auto fileInfo = gcnew FileInfo(file);
+                    items->Add("[Файл] " + file + " (" + fileInfo->Length + " байт)");
+                }
+            }
+            else {
+                throw gcnew IOException("Директория не найдена: " + directory);
+            }
+        }
+        catch (Exception^ ex) {
+            MessageBox::Show("Ошибка при получении содержимого: " + ex->Message, "Ошибка", MessageBoxButtons::OK, MessageBoxIcon::Error);
+        }
+        return items->ToArray();
+    }
+};
+
+public ref class MainForm : public Form {
+private:
+    TextBox^ directoryInput;
+    ListBox^ itemList;
+    Button^ deleteButton;
+    Button^ refreshButton;
+    Button^ copyButton;
+    Button^ openFolderButton; // Кнопка для открытия папки
+    Button^ openFileButton;   // Кнопка для открытия файла
+
+public:
+    MainForm() {
+        this->Text = "Файловый менеджер";
+        this->Width = 600;
+        this->Height = 500;
+
+        // Поле ввода директории
+        directoryInput = gcnew TextBox();
+        directoryInput->Width = 400;
+        directoryInput->Top = 20;
+        directoryInput->Left = 10;
+
+        // Кнопка обновления
+        refreshButton = gcnew Button();
+        refreshButton->Text = "Обновить";
+        refreshButton->Top = 20;
+        refreshButton->Left = 420;
+        refreshButton->Width = 100;
+        refreshButton->Click += gcnew EventHandler(this, &MainForm::RefreshDirectory);
+
+        // Список элементов
+        itemList = gcnew ListBox();
+        itemList->Top = 60;
+        itemList->Left = 10;
+        itemList->Width = 550;
+        itemList->Height = 350;
+
+        // Кнопка удаления
+        deleteButton = gcnew Button();
+        deleteButton->Text = "Удалить";
+        deleteButton->Top = 420;
+        deleteButton->Left = 10;
+        deleteButton->Width = 100;
+        deleteButton->Click += gcnew EventHandler(this, &MainForm::DeleteSelectedItem);
+
+        // Кнопка копирования
+        copyButton = gcnew Button();
+        copyButton->Text = "Копировать";
+        copyButton->Top = 420;
+        copyButton->Left = 120;
+        copyButton->Width = 100;
+        copyButton->Click += gcnew EventHandler(this, &MainForm::CopySelectedItem);
+
+        // Кнопка открытия папки
+        openFolderButton = gcnew Button();
+        openFolderButton->Text = "Открыть папку";
+        openFolderButton->Top = 420;
+        openFolderButton->Left = 230;
+        openFolderButton->Width = 120;
+        openFolderButton->Click += gcnew EventHandler(this, &MainForm::OpenFolder);
+
+        // Кнопка открытия файла
+        openFileButton = gcnew Button();
+        openFileButton->Text = "Открыть файл";
+        openFileButton->Top = 420;
+        openFileButton->Left = 360;
+        openFileButton->Width = 120;
+        openFileButton->Click += gcnew EventHandler(this, &MainForm::OpenFile);
+
+        // Добавление всех компонентов в форму
+        this->Controls->Add(directoryInput);
+        this->Controls->Add(refreshButton);
+        this->Controls->Add(itemList);
+        this->Controls->Add(deleteButton);
+        this->Controls->Add(copyButton);
+        this->Controls->Add(openFolderButton);
+        this->Controls->Add(openFileButton);
+    }
+
+private:
+    void RefreshDirectory(Object^ sender, EventArgs^ e) {
+        String^ directory = directoryInput->Text;
+        itemList->Items->Clear();
+
+        try {
+            auto items = FileManager::GetDirectoryItems(directory);
+            if (items->Length > 0) {
+                for each (String ^ item in items) {
+                    itemList->Items->Add(item);
+                }
+            }
+            else {
+                MessageBox::Show("Директория пуста!", "Информация", MessageBoxButtons::OK, MessageBoxIcon::Information);
+            }
+        }
+        catch (Exception^ ex) {
+            MessageBox::Show("Ошибка: " + ex->Message, "Ошибка", MessageBoxButtons::OK, MessageBoxIcon::Error);
+        }
+    }
+
+    void DeleteSelectedItem(Object^ sender, EventArgs^ e) {
+        if (itemList->SelectedItem != nullptr) {
+            if (MessageBox::Show("Вы уверены, что хотите удалить этот элемент?", "Подтверждение", MessageBoxButtons::YesNo, MessageBoxIcon::Warning) == System::Windows::Forms::DialogResult::Yes) {
+                try {
+                    String^ selectedItem = itemList->SelectedItem->ToString();
+                    String^ path = selectedItem->Substring(selectedItem->IndexOf(" ") + 1);
+                    FileManager::DeleteItem(path);
+                    RefreshDirectory(sender, e);
+                }
+                catch (Exception^ ex) {
+                    MessageBox::Show("Ошибка: " + ex->Message, "Ошибка", MessageBoxButtons::OK, MessageBoxIcon::Error);
+                }
+            }
+        }
+        else {
+            MessageBox::Show("Выберите элемент для удаления!", "Ошибка", MessageBoxButtons::OK, MessageBoxIcon::Warning);
+        }
+    }
+
+    void CopySelectedItem(Object^ sender, EventArgs^ e) {
+        if (itemList->SelectedItem != nullptr) {
+            try {
+                String^ source = itemList->SelectedItem->ToString()->Substring(itemList->SelectedItem->ToString()->IndexOf(" ") + 1);
+                String^ destination = directoryInput->Text + "\\Копия_" + Path::GetFileName(source);
+                FileManager::CopyItem(source, destination);
+                RefreshDirectory(sender, e);
+                MessageBox::Show("Элемент успешно скопирован!", "Успех", MessageBoxButtons::OK, MessageBoxIcon::Information);
+            }
+            catch (Exception^ ex) {
+                MessageBox::Show("Ошибка: " + ex->Message, "Ошибка", MessageBoxButtons::OK, MessageBoxIcon::Error);
+            }
+        }
+        else {
+            MessageBox::Show("Выберите элемент для копирования!", "Ошибка", MessageBoxButtons::OK, MessageBoxIcon::Warning);
+        }
+    }
+
+    void OpenFolder(Object^ sender, EventArgs^ e) {
+        FolderBrowserDialog^ folderDialog = gcnew FolderBrowserDialog();
+        if (folderDialog->ShowDialog() == System::Windows::Forms::DialogResult::OK) {
+            String^ selectedFolder = folderDialog->SelectedPath;
+            directoryInput->Text = selectedFolder;
+            RefreshDirectory(sender, e);
+        }
+    }
+    void OpenFile(Object^ sender, EventArgs^ e) {
+        OpenFileDialog^ fileDialog = gcnew OpenFileDialog();
+        fileDialog->Filter = "Все файлы (*.*)|*.*"; // Фильтр для отображения всех файлов
+        if (fileDialog->ShowDialog() == System::Windows::Forms::DialogResult::OK) {
+            String^ selectedFile = fileDialog->FileName;
+            MessageBox::Show("Выбранный файл: " + selectedFile, "Информация", MessageBoxButtons::OK, MessageBoxIcon::Information);
+        }
+    }
+};
+
+[STAThread]
+void main() {
+    Application::EnableVisualStyles();
+    Application::SetCompatibleTextRenderingDefault(false);
+    Application::Run(gcnew MainForm());
+}
